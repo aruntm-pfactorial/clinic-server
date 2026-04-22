@@ -22,7 +22,7 @@ if (process.env.GOOGLE_CREDENTIALS) {
 const calendar = google.calendar({ version: 'v3', auth });
 
 // Your Google Calendar ID — paste yours here
-const CALENDAR_ID = 'tmarunajayan@gmail.com';
+const CALENDAR_ID = '0ae3663f12e4f83aac4f8b2203b3ea54fa0d8ce450d7b846260b07b9cae326d8@group.calendar.google.com';
 
 // Clinic working hours
 const CLINIC_START_HOUR = 9;  // 9 AM
