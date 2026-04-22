@@ -85,7 +85,13 @@ async function findNextFreeSlots(fromTime, count) {
 // MAIN ENDPOINT — VAPI calls this
 // ─────────────────────────────────────────
 app.post('/vapi-tools', async (req, res) => {
-  const { name, parameters } = req.body;
+  console.log('Full body:', JSON.stringify(req.body, null, 2));
+
+  // Handle VAPI's request format
+  const toolCall = req.body.message?.toolWithToolCallList?.[0];
+  const name = toolCall?.tool?.function?.name || req.body.name;
+  const parameters = toolCall?.toolCall?.function?.arguments || req.body.parameters || {};
+
   console.log('Tool called:', name);
   console.log('Parameters:', JSON.stringify(parameters));
 
