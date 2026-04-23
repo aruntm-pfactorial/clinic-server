@@ -112,7 +112,8 @@ app.post('/vapi-tools', async (req, res) => {
       const start = new Date(`${requested_date}T${requested_time}:00+05:30`);
       const end = new Date(start.getTime() + 30 * 60000);
 
-      const hour = start.getHours();
+      // Use IST hour directly from the requested_time string
+      const hour = parseInt(requested_time.split(':')[0]);
       if (hour < CLINIC_START_HOUR || hour >= CLINIC_END_HOUR) {
         return sendResult({
           available: false,
@@ -120,8 +121,8 @@ app.post('/vapi-tools', async (req, res) => {
           message: 'That time is outside clinic hours. Clinic is open 9 AM to 6 PM.',
         });
       }
-
-      if (start.getDay() === 0) {
+      const istDate = new Date(`${requested_date}T${requested_time}:00+05:30`);
+      if (istDate.getDay() === 0) {
         return sendResult({
           available: false,
           reason: 'clinic_closed',
