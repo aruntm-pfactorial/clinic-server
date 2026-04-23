@@ -115,12 +115,12 @@ app.post('/vapi-tools', async (req, res) => {
         const alternatives = await findNextFreeSlots(
           new Date(`${requested_date}T09:00:00`), 3
         );
-        return res.json({
+        return res.json({ result: JSON.stringify({
           available: false,
           reason: 'outside_clinic_hours',
           message: 'That time is outside clinic hours.',
           alternatives,
-        });
+        })});
       }
 
       // Check if Sunday
@@ -129,12 +129,12 @@ app.post('/vapi-tools', async (req, res) => {
         nextDay.setDate(nextDay.getDate() + 1);
         nextDay.setHours(CLINIC_START_HOUR, 0, 0, 0);
         const alternatives = await findNextFreeSlots(nextDay, 3);
-        return res.json({
+        return res.json({ result: JSON.stringify({
           available: false,
           reason: 'clinic_closed',
           message: 'The clinic is closed on Sundays.',
           alternatives,
-        });
+        })});
       }
 
       // Check Google Calendar for existing events
@@ -153,31 +153,27 @@ app.post('/vapi-tools', async (req, res) => {
       console.log('Google Calendar responded successfully');
       console.log('Events found:', events.data.items.length);
       if (events.data.items.length === 0) {
-        return res.json({
+        const result = {
           available: true,
           confirmed_date: start.toLocaleDateString('en-IN', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
           }),
           confirmed_time: start.toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
+            hour: '2-digit', minute: '2-digit', hour12: true
           }),
-        });
+        };
+        console.log('Sending response:', JSON.stringify(result));
+        return res.json({ result: JSON.stringify(result) });
       }
 
       // Slot is busy — find alternatives
       // const alternatives = await findNextFreeSlots(end, 3);
       console.log('Slot is busy, returning unavailable');
-      return res.json({
+      return res.json({ result: JSON.stringify({
         available: false,
         reason: 'slot_busy',
-        message: 'That slot is already booked.',
-        alternatives,
-      });
+        message: 'That slot is already booked. Please ask the patient for another preferred time.',
+      })});
     }
 
     // ── TOOL 2: Book the appointment ──
@@ -204,7 +200,7 @@ app.post('/vapi-tools', async (req, res) => {
         },
       });
 
-      return res.json({
+      return res.json({ result: JSON.stringify({
         success: true,
         eventId: event.data.id,
         message: 'Appointment booked successfully',
@@ -219,7 +215,7 @@ app.post('/vapi-tools', async (req, res) => {
           minute: '2-digit',
           hour12: true
         }),
-      });
+      })});
     }
 
     // ── TOOL 3: Find existing appointment ──
@@ -247,7 +243,7 @@ app.post('/vapi-tools', async (req, res) => {
 
       if (match) {
         const apptDate = new Date(match.start.dateTime);
-        return res.json({
+        return res.json({ result: JSON.stringify({
           found: true,
           eventId: match.id,
           patient_name: match.summary.replace('Appointment — ', ''),
@@ -262,10 +258,10 @@ app.post('/vapi-tools', async (req, res) => {
             minute: '2-digit',
             hour12: true
           }),
-        });
+        })});
       }
 
-      return res.json({ found: false });
+      return res.json({ result: JSON.stringify({ found: false }) });
     }
 
     // ── TOOL 4: Transfer call ──
@@ -280,10 +276,10 @@ app.post('/vapi-tools', async (req, res) => {
     console.error('ERROR STACK:', err.stack);
     console.error('ERROR CODE:', err.code);
     console.error('ERROR STATUS:', err.status);
-    return res.json({
+    return res.json({ result: JSON.stringify({
       available: true,
       error_debug: err.message
-    });
+    })});
   }
 });
 
