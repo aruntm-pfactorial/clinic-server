@@ -151,7 +151,7 @@ app.post('/vapi-tools', async (req, res) => {
         )
       ]);
       console.log('Google Calendar responded successfully');
-
+      console.log('Events found:', events.data.items.length);
       if (events.data.items.length === 0) {
         return res.json({
           available: true,
@@ -170,7 +170,8 @@ app.post('/vapi-tools', async (req, res) => {
       }
 
       // Slot is busy — find alternatives
-      const alternatives = await findNextFreeSlots(end, 3);
+      // const alternatives = await findNextFreeSlots(end, 3);
+      console.log('Slot is busy, returning unavailable');
       return res.json({
         available: false,
         reason: 'slot_busy',
