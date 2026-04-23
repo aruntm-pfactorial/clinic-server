@@ -145,15 +145,11 @@ app.post('/vapi-tools', async (req, res) => {
       console.log('Google Calendar responded successfully');
       console.log('Events found:', events.data.items.length);
 
-      if (events.data.items.length === 0) {
+     if (events.data.items.length === 0) {
         return sendResult({
           available: true,
-          confirmed_date: start.toLocaleDateString('en-IN', {
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-          }),
-          confirmed_time: start.toLocaleTimeString('en-IN', {
-            hour: '2-digit', minute: '2-digit', hour12: true
-          }),
+          confirmed_date: `${requested_date}`,
+          confirmed_time: `${requested_time}`,
         });
       }
 
@@ -234,6 +230,22 @@ app.post('/vapi-tools', async (req, res) => {
       }
 
       return sendResult({ found: false });
+    }
+
+    // TOOL 3B: Delete_calender event
+    if (name === 'delete_calendar_event') {
+      const { eventId } = parameters;
+      
+      await calendar.events.delete({
+        calendarId: CALENDAR_ID,
+        eventId: eventId,
+      });
+
+      console.log('Event deleted:', eventId);
+      return sendResult({
+        success: true,
+        message: 'Old appointment cancelled successfully.',
+      });
     }
 
     // ── TOOL 4: Transfer call ──
