@@ -138,6 +138,7 @@ app.post('/vapi-tools', async (req, res) => {
       }
 
       // Check Google Calendar for existing events
+      console.log('Calling Google Calendar API for:', CALENDAR_ID);
       const events = await calendar.events.list({
         calendarId: CALENDAR_ID,
         timeMin: start.toISOString(),
@@ -218,6 +219,7 @@ app.post('/vapi-tools', async (req, res) => {
     if (name === 'find_existing_appointment') {
       const { patient_phone } = parameters;
 
+      console.log('Calling Google Calendar API for:', CALENDAR_ID);
       const events = await calendar.events.list({
         calendarId: CALENDAR_ID,
         timeMin: new Date().toISOString(),
@@ -261,10 +263,13 @@ app.post('/vapi-tools', async (req, res) => {
     return res.json({ error: 'Unknown tool name: ' + name });
 
   } catch (err) {
-    console.error('Server error:', err.message);
+    console.error('FULL ERROR:', err.message);
+    console.error('ERROR STACK:', err.stack);
+    console.error('ERROR CODE:', err.code);
+    console.error('ERROR STATUS:', err.status);
     return res.json({
-      error: true,
-      message: err.message
+      available: true,
+      error_debug: err.message
     });
   }
 });
