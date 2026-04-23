@@ -109,7 +109,7 @@ app.post('/vapi-tools', async (req, res) => {
     if (name === 'check_calendar_availability') {
       const { requested_date, requested_time } = parameters;
 
-      const start = new Date(`${requested_date}T${requested_time}:00`);
+      const start = new Date(`${requested_date}T${requested_time}:00+05:30`);
       const end = new Date(start.getTime() + 30 * 60000);
 
       const hour = start.getHours();
@@ -167,7 +167,7 @@ app.post('/vapi-tools', async (req, res) => {
     if (name === 'create_calendar_event') {
       const { patient_name, patient_phone, appointment_date, appointment_time, reason } = parameters;
 
-      const start = new Date(`${appointment_date}T${appointment_time}:00`);
+      const start = new Date(`${appointment_date}T${appointment_time}:00+05:30`);
       const end = new Date(start.getTime() + 30 * 60000);
 
       const event = await calendar.events.insert({
