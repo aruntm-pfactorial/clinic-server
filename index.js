@@ -139,12 +139,18 @@ app.post('/vapi-tools', async (req, res) => {
 
       // Check Google Calendar for existing events
       console.log('Calling Google Calendar API for:', CALENDAR_ID);
-      const events = await calendar.events.list({
-        calendarId: CALENDAR_ID,
-        timeMin: start.toISOString(),
-        timeMax: end.toISOString(),
-        singleEvents: true,
-      });
+      const events = await Promise.race([
+        calendar.events.list({
+          calendarId: CALENDAR_ID,
+          timeMin: start.toISOString(),
+          timeMax: end.toISOString(),
+          singleEvents: true,
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('TIMEOUT: Google Calendar took too long')), 8000)
+        )
+      ]);
+      console.log('Google Calendar responded successfully');
 
       if (events.data.items.length === 0) {
         return res.json({
@@ -220,13 +226,19 @@ app.post('/vapi-tools', async (req, res) => {
       const { patient_phone } = parameters;
 
       console.log('Calling Google Calendar API for:', CALENDAR_ID);
-      const events = await calendar.events.list({
-        calendarId: CALENDAR_ID,
-        timeMin: new Date().toISOString(),
-        maxResults: 100,
-        singleEvents: true,
-        orderBy: 'startTime',
-      });
+      const events = await Promise.race([
+        calendar.events.list({
+          calendarId: CALENDAR_ID,
+          timeMin: new Date().toISOString(),
+          maxResults: 100,
+          singleEvents: true,
+          orderBy: 'startTime',
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('TIMEOUT: Google Calendar took too long')), 8000)
+        )
+      ]);
+      console.log('Google Calendar responded successfully');
 
       const match = events.data.items.find(e =>
         e.description && e.description.includes(patient_phone)
