@@ -86,8 +86,9 @@ async function findNextFreeSlots(fromTime, count) {
 // ─────────────────────────────────────────
 app.post('/vapi-tools', async (req, res) => {
   const toolCall = req.body.message?.toolWithToolCallList?.[0];
-  const name = toolCall?.tool?.function?.name;
-  
+  const name = toolCall?.tool?.function?.name 
+            || toolCall?.toolCall?.function?.name
+            || req.body.message?.toolCalls?.[0]?.function?.name;
   let parameters = toolCall?.toolCall?.function?.arguments || {};
   
   // Parse if it came as a string
