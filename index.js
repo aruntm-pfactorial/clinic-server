@@ -187,7 +187,8 @@ app.post('/vapi-tools', async (req, res) => {
           weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         }),
         booked_time: start.toLocaleTimeString('en-IN', {
-          hour: '2-digit', minute: '2-digit', hour12: true
+          hour: '2-digit', minute: '2-digit', hour12: true,
+          timeZone: 'Asia/Kolkata'
         }),
       });
     }
@@ -224,7 +225,8 @@ app.post('/vapi-tools', async (req, res) => {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
           }),
           current_time: apptDate.toLocaleTimeString('en-IN', {
-            hour: '2-digit', minute: '2-digit', hour12: true
+            hour: '2-digit', minute: '2-digit', hour12: true,
+            timeZone: 'Asia/Kolkata'
           }),
         });
       }
