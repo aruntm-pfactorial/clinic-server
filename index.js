@@ -21,21 +21,43 @@ const calendar = google.calendar({ version: 'v3', auth });
 
 const CALENDAR_ID = '0ae3663f12e4f83aac4f8b2203b3ea54fa0d8ce450d7b846260b07b9cae326d8@group.calendar.google.com';
 
-const CLINIC_START_HOUR = 9;
-const CLINIC_END_HOUR = 18;
+const CLINIC_START_HOUR = 9;   // 9 AM
+const CLINIC_END_HOUR = 18;    // 6 PM
+const BREAK_START_HOUR = 13;   // 1 PM break starts
+const BREAK_END_HOUR = 14;     // 2 PM break ends
+
+function isDuringBreak(hour) {
+  return hour >= BREAK_START_HOUR && hour < BREAK_END_HOUR;
+}
+
+function getSession(hour) {
+  if (hour >= 9 && hour < 12) return 'Morning (9 AM - 12 PM)';
+  if (hour >= 12 && hour < 13) return 'Noon (12 PM - 1 PM)';
+  if (hour >= 14 && hour < 18) return 'Evening (2 PM - 6 PM)';
+  return 'Unknown';
+}
 
 async function findNextFreeSlots(fromTime, count) {
   const slots = [];
   let check = new Date(fromTime);
+  let safetyLimit = 200;
 
-  while (slots.length < count) {
+  while (slots.length < count && safetyLimit > 0) {
+    safetyLimit--;
     const hour = check.getHours();
+
     if (hour < CLINIC_START_HOUR) {
       check.setHours(CLINIC_START_HOUR, 0, 0, 0);
+      continue;
     }
     if (hour >= CLINIC_END_HOUR) {
       check.setDate(check.getDate() + 1);
       check.setHours(CLINIC_START_HOUR, 0, 0, 0);
+      continue;
+    }
+    if (isDuringBreak(hour)) {
+      check.setHours(BREAK_END_HOUR, 0, 0, 0);
+      continue;
     }
     if (check.getDay() === 0) {
       check.setDate(check.getDate() + 1);
@@ -44,6 +66,13 @@ async function findNextFreeSlots(fromTime, count) {
     }
 
     const checkEnd = new Date(check.getTime() + 30 * 60000);
+
+    // Don't let slot run into break time
+    if (check.getHours() < BREAK_START_HOUR && checkEnd.getHours() >= BREAK_START_HOUR) {
+      check.setHours(BREAK_END_HOUR, 0, 0, 0);
+      continue;
+    }
+
     const r = await calendar.events.list({
       calendarId: CALENDAR_ID,
       timeMin: check.toISOString(),
@@ -54,16 +83,20 @@ async function findNextFreeSlots(fromTime, count) {
     if (r.data.items.length === 0) {
       slots.push({
         date: check.toLocaleDateString('en-IN', {
-          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+          timeZone: 'Asia/Kolkata'
         }),
         time: check.toLocaleTimeString('en-IN', {
-          hour: '2-digit', minute: '2-digit', hour12: true
+          hour: '2-digit', minute: '2-digit', hour12: true,
+          timeZone: 'Asia/Kolkata'
         }),
-        iso: check.toISOString(),
+        session: getSession(check.getHours()),
       });
     }
+
     check = checkEnd;
   }
+
   return slots;
 }
 
@@ -91,7 +124,6 @@ app.post('/vapi-tools', async (req, res) => {
   console.log('Tool call ID:', toolCallId);
   console.log('Parameters:', JSON.stringify(parameters));
 
-  // Helper — sends response in correct VAPI format
   const sendResult = (data) => {
     const payload = {
       results: [{
@@ -111,22 +143,45 @@ app.post('/vapi-tools', async (req, res) => {
 
       const start = new Date(`${requested_date}T${requested_time}:00+05:30`);
       const end = new Date(start.getTime() + 30 * 60000);
-
-      // Use IST hour directly from the requested_time string
       const hour = parseInt(requested_time.split(':')[0]);
+
+      // Outside clinic hours
       if (hour < CLINIC_START_HOUR || hour >= CLINIC_END_HOUR) {
+        const alternatives = await findNextFreeSlots(
+          new Date(`${requested_date}T09:00:00+05:30`), 3
+        );
         return sendResult({
           available: false,
           reason: 'outside_clinic_hours',
           message: 'That time is outside clinic hours. Clinic is open 9 AM to 6 PM.',
+          alternatives,
         });
       }
+
+      // Break time (1 PM - 2 PM)
+      if (isDuringBreak(hour)) {
+        const alternatives = await findNextFreeSlots(
+          new Date(`${requested_date}T14:00:00+05:30`), 3
+        );
+        return sendResult({
+          available: false,
+          reason: 'break_time',
+          message: 'That time is the lunch break from 1 PM to 2 PM. Here are the next available slots.',
+          alternatives,
+        });
+      }
+
+      // Sunday check
       const istDate = new Date(`${requested_date}T${requested_time}:00+05:30`);
       if (istDate.getDay() === 0) {
+        const alternatives = await findNextFreeSlots(
+          new Date(`${requested_date}T09:00:00+05:30`), 3
+        );
         return sendResult({
           available: false,
           reason: 'clinic_closed',
           message: 'The clinic is closed on Sundays.',
+          alternatives,
         });
       }
 
@@ -145,18 +200,22 @@ app.post('/vapi-tools', async (req, res) => {
       console.log('Google Calendar responded successfully');
       console.log('Events found:', events.data.items.length);
 
-     if (events.data.items.length === 0) {
+      if (events.data.items.length === 0) {
         return sendResult({
           available: true,
-          confirmed_date: `${requested_date}`,
-          confirmed_time: `${requested_time}`,
+          confirmed_date: requested_date,
+          confirmed_time: requested_time,
+          session: getSession(hour),
         });
       }
 
+      // Slot busy — find 3 real next free slots
+      const alternatives = await findNextFreeSlots(end, 3);
       return sendResult({
         available: false,
         reason: 'slot_busy',
-        message: 'That slot is already booked. Please ask the patient for another preferred time.',
+        message: 'That slot is already booked.',
+        alternatives,
       });
     }
 
@@ -184,7 +243,8 @@ app.post('/vapi-tools', async (req, res) => {
         eventId: event.data.id,
         message: 'Appointment booked successfully',
         booked_date: start.toLocaleDateString('en-IN', {
-          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+          timeZone: 'Asia/Kolkata'
         }),
         booked_time: start.toLocaleTimeString('en-IN', {
           hour: '2-digit', minute: '2-digit', hour12: true,
@@ -222,7 +282,8 @@ app.post('/vapi-tools', async (req, res) => {
           eventId: match.id,
           patient_name: match.summary.replace('Appointment — ', ''),
           current_date: apptDate.toLocaleDateString('en-IN', {
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+            timeZone: 'Asia/Kolkata'
           }),
           current_time: apptDate.toLocaleTimeString('en-IN', {
             hour: '2-digit', minute: '2-digit', hour12: true,
@@ -234,10 +295,10 @@ app.post('/vapi-tools', async (req, res) => {
       return sendResult({ found: false });
     }
 
-    // TOOL 3B: Delete_calender event
+    // ── TOOL 3B: Delete calendar event (for reschedule) ──
     if (name === 'delete_calendar_event') {
       const { eventId } = parameters;
-      
+
       await calendar.events.delete({
         calendarId: CALENDAR_ID,
         eventId: eventId,
@@ -265,7 +326,6 @@ app.post('/vapi-tools', async (req, res) => {
   }
 });
 
-// Health check
 app.get('/', (req, res) => {
   res.send('Clinic server is running!');
 });
