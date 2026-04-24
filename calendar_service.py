@@ -8,9 +8,9 @@ from google.oauth2 import service_account
 CALENDAR_ID = "0ae3663f12e4f83aac4f8b2203b3ea54fa0d8ce450d7b846260b07b9cae326d8@group.calendar.google.com"
 
 CLINIC_START_HOUR = 9    # 9 AM
-CLINIC_END_HOUR   = 18   # 6 PM
-BREAK_START_HOUR  = 13   # 1 PM
-BREAK_END_HOUR    = 14   # 2 PM
+CLINIC_END_HOUR = 18     # 6 PM
+BREAK_START_HOUR = 13    # 1 PM
+BREAK_END_HOUR = 14      # 2 PM
 
 IST = timezone(timedelta(hours=5, minutes=30))
 

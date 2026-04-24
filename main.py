@@ -33,7 +33,7 @@ def send_result(tool_call_id: str, data: dict) -> JSONResponse:
 
 
 # Health check
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "Clinic server is running!"}
 
