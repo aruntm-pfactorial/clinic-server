@@ -4,9 +4,21 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from routes import check_availability, create_event, find_appointment, delete_event, transfer_call
+import httpx
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import HTTPException
 
 app = FastAPI(title="ABC Clinic VAPI Server")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    # allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+VAPI_PRIVATE_KEY = os.getenv("VAPI_PRIVATE_KEY", "e6d74b9a-814e-474f-b77e-e4b66ea32a91")
 
 # Tool router
 TOOL_HANDLERS = {
@@ -87,8 +99,28 @@ async def vapi_tools(request: Request):
         return send_result(tool_call_id, {"error": True, "message": str(e)})
 
 
+@app.post("/chat")
+async def chat_proxy(request: Request):
+    
+    body = await request.json()
+    vapi_private_key = os.getenv("VAPI_PRIVATE_KEY")
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.vapi.ai/chat",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {vapi_private_key}",
+            },
+            json=body,
+            timeout=30.0
+        )
+    
+    return response.json()
+
+
 # Run locally
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 8000))
+    port = int(os.getenv("PORT", 3012))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
