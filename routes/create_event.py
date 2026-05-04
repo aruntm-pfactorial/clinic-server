@@ -1,6 +1,7 @@
 from calendar_service import (
     get_calendar_service, CALENDAR_ID,
     parse_ist_datetime, format_ist_date, format_ist_time,
+    now_ist,
 )
 from datetime import timedelta
 
@@ -15,6 +16,13 @@ def handle(parameters: dict, tool_call_id: str) -> dict:
     service = get_calendar_service()
 
     start = parse_ist_datetime(appointment_date, appointment_time)
+    if start < now_ist():
+        return {
+            "success": False,
+            "error": "past_time",
+            "message": "Cannot book an appointment in the past. Please choose a future date and time.",
+        }
+
     end = start + timedelta(minutes=30)
 
     event = service.events().insert(

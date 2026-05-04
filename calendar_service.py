@@ -60,10 +60,27 @@ def parse_ist_datetime(date_str: str, time_str: str) -> datetime:
     return datetime.fromisoformat(f"{date_str}T{time_str}:00+05:30")
 
 
+def now_ist() -> datetime:
+    """Current timezone-aware datetime in IST."""
+    return datetime.now(IST)
+
+
+def ceil_to_next_half_hour(dt: datetime) -> datetime:
+    """Round datetime up to the next 30-minute boundary in IST."""
+    dt = dt.astimezone(IST).replace(second=0, microsecond=0)
+    minute = dt.minute
+
+    if minute == 0 or minute == 30:
+        return dt
+    if minute < 30:
+        return dt.replace(minute=30)
+    return (dt + timedelta(hours=1)).replace(minute=0)
+
+
 def find_next_free_slots(service, from_time: datetime, count: int = 3) -> list:
     """Find the next N free 30-minute slots after from_time."""
     slots = []
-    check = from_time.astimezone(IST)
+    check = ceil_to_next_half_hour(from_time)
     safety = 200
 
     while len(slots) < count and safety > 0:

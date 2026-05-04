@@ -4,6 +4,7 @@ from calendar_service import (
     CLINIC_START_HOUR, CLINIC_END_HOUR,
     is_break_time, get_session,
     parse_ist_datetime, find_next_free_slots,
+    now_ist, ceil_to_next_half_hour,
 )
 from datetime import timedelta
 
@@ -14,8 +15,24 @@ def handle(parameters: dict, tool_call_id: str) -> dict:
     requested_date = parameters.get("requested_date")
     requested_time = parameters.get("requested_time")
 
-    hour = int(requested_time.split(":")[0])
     service = get_calendar_service()
+    start = parse_ist_datetime(requested_date, requested_time)
+    hour = start.hour
+    current_ist = now_ist()
+
+    # Past date/time check (including earlier time today)
+    if start < current_ist:
+        alternatives = find_next_free_slots(
+            service,
+            ceil_to_next_half_hour(current_ist + timedelta(minutes=1)),
+            3
+        )
+        return {
+            "available": False,
+            "reason": "past_time",
+            "message": "That requested slot is in the past. Please choose a future date and time.",
+            "alternatives": alternatives,
+        }
 
     # Outside clinic hours
     if hour < CLINIC_START_HOUR or hour >= CLINIC_END_HOUR:
@@ -46,7 +63,6 @@ def handle(parameters: dict, tool_call_id: str) -> dict:
         }
 
     # Sunday check
-    start = parse_ist_datetime(requested_date, requested_time)
     if start.weekday() == 6:
         alternatives = find_next_free_slots(
             service,
